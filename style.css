@@ -1,0 +1,133 @@
+/* Global Theme */
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    background: #0a0a0a;
+    color: #e0e0e0;
+  }
+  
+  /* Header */
+  header {
+    text-align: center;
+    padding: 20px;
+    border-bottom: 2px solid #00ff88;
+    background: linear-gradient(90deg, #000, #111, #000);
+  }
+  header .logo {
+    width: 90px;
+  }
+  header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    color: #00ff88;
+    margin: 10px 0;
+  }
+  header .tagline {
+    font-size: 1.2rem;
+    color: #bbb;
+  }
+  
+  /* Layout */
+  .layout {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px;
+  }
+  
+  /* Ads Section */
+  .ads {
+    width: 200px;
+    background: #111;
+    border: 2px solid #00ff88;
+    padding: 15px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #aaa;
+  }
+  
+  /* Games Grid */
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    flex: 1;
+    padding: 0 20px;
+  }
+  .game-card {
+    background: #111;
+    border: 2px solid #00ff88;
+    border-radius: 10px;
+    text-align: center;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .game-card img {
+    width: 100%;
+    display: block;
+  }
+  .game-card a {
+   text-decoration: none; 
+  }
+  .game-card p {
+    margin: 10px 0;
+    font-weight: bold;
+    color: antiquewhite;
+    text-decoration: none;
+  }
+  .game-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 0 20px #00ff88;
+  }
+  
+  /* Sidebar */
+  .sidebar {
+    width: 220px;
+    background: #111;
+    border: 2px solid #00ff88;
+    padding: 15px;
+  }
+  .sidebar h2 {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: #00ff88;
+  }
+  .sidebar li {
+    margin: 8px 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: #ccc;
+    animation: fadeIn 2s infinite alternate;
+  }
+  
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 15px;
+    border-top: 2px solid #00ff88;
+    margin-top: 40px;
+    background: #0d0d0d;
+    font-size: 0.85rem;
+    color: #777;
+  }
+  
+  /* Animation */
+  @keyframes fadeIn {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+  }
+  
+  /* Responsive */
+  @media(max-width: 1000px) {
+    .layout {
+      flex-direction: column;
+      align-items: center;
+    }
+    .ads, .sidebar {
+      width: 100%;
+      margin: 10px 0;
+    }
+    .games-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  

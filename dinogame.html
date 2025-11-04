@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chrome Dino | OG Games</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0a0f1f;--neon:cyan;--accent:#ff8c00}
+    html,body{height:100%;margin:0;font-family:'Roboto',sans-serif;background:var(--bg);color:#fff}
+    a.back{display:inline-block;margin:12px;color:var(--neon);font-family:'Orbitron';text-decoration:none}
+    a.back:hover{text-shadow:0 0 10px var(--neon)}
+    h1{font-family:'Orbitron',sans-serif;letter-spacing:2px;margin:6px 0}
+    .wrap{max-width:900px;margin:0 auto;text-align:center;padding:6px}
+    #game{display:block;margin:18px auto;background:#071021;border:2px solid var(--neon);box-shadow:0 0 18px rgba(0,255,255,0.07)}
+    .hud{display:flex;justify-content:center;gap:20px;font-family:'Orbitron',sans-serif;color:var(--neon);margin-top:8px}
+    .controls{color:#bbb;margin-top:10px;font-size:14px}
+    button#restart{background:var(--neon);border:none;padding:8px 14px;border-radius:8px;color:#001;cursor:pointer;font-weight:700}
+    button#restart:hover{filter:brightness(.95)}
+    .small{font-size:13px;color:#9aa}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">⬅ Back to Games</a>
+    <h1>Chrome Dino</h1>
+
+    <canvas id="game" width="900" height="260"></canvas>
+
+    <div class="hud">
+      <div>Score: <span id="score">0</span></div>
+      <div>High: <span id="high">0</span></div>
+    </div>
+
+    <div style="margin-top:10px">
+      <button id="restart">Restart</button>
+    </div>
+
+    <div class="controls small">Press <strong>Space</strong> or <strong>Up</strong> to jump. Click / Tap to jump. Hold <strong>Down</strong> to duck.</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const highEl = document.getElementById('high');
+    const restartBtn = document.getElementById('restart');
+
+    // Game variables
+    const GROUND_Y = canvas.height - 40;
+    let running = false;
+    let speed = 6;
+    let gravity = 0.6;
+    let obstacles = [];
+    let frames = 0;
+    let score = 0;
+    let high = Number(localStorage.getItem('og_dino_high') || 0);
+    highEl.textContent = high;
+
+    // Dino object
+    const dino = {
+      x: 60,
+      y: GROUND_Y - 44,
+      w: 44,
+      h: 44,
+      vy: 0,
+      grounded: true,
+      ducking: false,
+      draw() {
+        ctx.fillStyle = 'white';
+        if (this.ducking) {
+          ctx.fillRect(this.x, this.y + 18, this.w, this.h - 18);
+        } else {
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+        }
+      },
+      jump() {
+        if (this.grounded) {
+          this.vy = -12;
+          this.grounded = false;
+          this.ducking = false;
+        }
+      },
+      duck(toggle) {
+        if (!this.grounded) return;
+        this.ducking = toggle;
+      },
+      update() {
+        this.vy += gravity;
+        this.y += this.vy;
+        if (this.y >= GROUND_Y - this.h) {
+          this.y = GROUND_Y - this.h;
+          this.vy = 0;
+          this.grounded = true;
+        }
+      }
+    };
+
+    function spawnObstacle() {
+      // vary size and gap
+      const h = Math.random() < 0.6 ? 28 : 48;
+      const w = Math.random() < 0.6 ? 18 : 28;
+      const y = GROUND_Y - h;
+      obstacles.push({ x: canvas.width + 20, y, w, h });
+    }
+
+    function reset() {
+      obstacles = [];
+      frames = 0;
+      score = 0;
+      speed = 6;
+      dino.y = GROUND_Y - dino.h;
+      dino.vy = 0;
+      dino.grounded = true;
+      dino.ducking = false;
+      running = true;
+      clearMessage();
+      requestAnimationFrame(loop);
+    }
+
+    function gameOver() {
+      running = false;
+      showMessage('Game Over — Press Restart');
+      if (score > high) {
+        high = score;
+        localStorage.setItem('og_dino_high', high);
+        highEl.textContent = high;
+      }
+    }
+
+    function showMessage(txt) {
+      // temporarily show in document title and small flash
+      document.title = txt + ' — OG Games';
+    }
+    function clearMessage() { document.title = 'Chrome Dino | OG Games'; }
+
+    function collide(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function update() {
+      frames++;
+
+      // spawn obstacles rhythmically and with randomness
+      if (frames % Math.max(60, Math.floor(120 - speed * 6)) === 0) {
+        spawnObstacle();
+      }
+
+      // increase difficulty over time
+      if (frames % 150 === 0) speed += 0.25;
+
+      // update obstacles
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].x -= speed;
+        if (obstacles[i].x + obstacles[i].w < 0) obstacles.splice(i,1);
+      }
+
+      // update dino
+      dino.update();
+
+      // scoring
+      if (frames % 6 === 0) score++;
+      scoreEl.textContent = score;
+
+      // collision detection
+      const hitbox = {
+        x: dino.x,
+        y: dino.ducking ? dino.y + 18 : dino.y,
+        w: dino.w,
+        h: dino.ducking ? dino.h - 18 : dino.h
+      };
+
+      for (const ob of obstacles) {
+        if (collide(hitbox, ob)) {
+          gameOver();
+        }
+      }
+    }
+
+    function drawGround() {
+      ctx.fillStyle = '#0b2540';
+      ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+      // dashed line
+      ctx.strokeStyle = '#082238';
+      ctx.beginPath();
+      for (let i = 0; i < canvas.width; i += 20) {
+        ctx.moveTo(i, GROUND_Y);
+        ctx.lineTo(i + 10, GROUND_Y);
+      }
+      ctx.stroke();
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // background grid subtle
+      ctx.fillStyle = '#071021';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // draw obstacles
+      ctx.fillStyle = 'white';
+      for (const ob of obstacles) {
+        ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+      }
+
+      // draw dino
+      dino.draw();
+
+      // ground
+      drawGround();
+    }
+
+    function loop() {
+      if (!running) return;
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Input handlers
+    function onKey(e) {
+      if (e.type === 'keydown') {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+          e.preventDefault();
+          dino.jump();
+          if (!running) reset();
+        }
+        if (e.code === 'ArrowDown') dino.duck(true);
+      } else if (e.type === 'keyup') {
+        if (e.code === 'ArrowDown') dino.duck(false);
+      }
+    }
+
+    function onClick(e) {
+      dino.jump();
+      if (!running) reset();
+    }
+
+    // Touch support: tap to jump, swipe down to duck
+    let touchY = null;
+    function onTouchStart(e) {
+      touchY = e.touches ? e.touches[0].clientY : e.clientY;
+      dino.jump();
+      if (!running) reset();
+    }
+    function onTouchMove(e) {
+      if (!e.touches) return;
+      const nowY = e.touches[0].clientY;
+      if (nowY - touchY > 20) dino.duck(true);
+    }
+    function onTouchEnd(e) { dino.duck(false); touchY = null; }
+
+    // attach events
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    canvas.addEventListener('click', onClick);
+    window.addEventListener('touchstart', onTouchStart, {passive:true});
+    window.addEventListener('touchmove', onTouchMove, {passive:true});
+    window.addEventListener('touchend', onTouchEnd, {passive:true});
+
+    restartBtn.addEventListener('click', () => { reset(); });
+
+    // Start paused with a friendly message
+    showMessage('Click / Press Space to start');
+    // Draw initial frame
+    draw();
+  </script>
+</body>
+</html>

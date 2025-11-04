@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Play OG Flappy Bird — fly through glowing neon pipes and beat your high score on OG Games!">
+<meta name="keywords" content="flappy bird, og games, arcade, snake, casual, fun games">
+<meta name="author" content="OG Games">
+<title>Flappy Bird | OG Games</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #0d0d0d;
+    font-family: "Poppins", sans-serif;
+    color: #00ff88;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .sidebar, .ads {
+    width: 200px;
+    height: 600px;
+    background: #111;
+    border: 2px solid #00ff66;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
+  }
+  .sidebar h2, .ads h2 {
+    text-align: center;
+    font-size: 1rem;
+    color: #00ff88;
+    margin-bottom: 10px;
+  }
+  .funfact {
+    font-size: 0.9rem;
+    color: #ccc;
+    text-align: justify;
+    animation: fade 1s ease;
+  }
+  @keyframes fade { from {opacity:0;} to {opacity:1;} }
+  .game-section { display: flex; flex-direction: column; align-items: center; }
+  h1 { color:#00ff88; text-shadow:0 0 15px #00ff88; margin:5px 0; }
+  #gameCanvas {
+    border: 3px solid #00ff88;
+    background: linear-gradient(180deg, #0d0d0d, #111);
+    box-shadow: 0 0 25px rgba(0,255,102,0.3);
+    border-radius: 10px;
+  }
+  #scoreboard { margin-top:10px; font-size:1.1rem; }
+  #restartBtn {
+    background:#00ff88;
+    color:#0d0d0d;
+    border:none;
+    border-radius:8px;
+    padding:10px 20px;
+    margin-top:10px;
+    cursor:pointer;
+    font-weight:bold;
+    transition:0.3s ease;
+  }
+  #restartBtn:hover { background:#00cc66; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="sidebar">
+    <h2>🧠 Fun Facts</h2>
+    <p class="funfact" id="funFact">Loading fun fact...</p>
+  </div>
+
+  <div class="game-section">
+    <h1>🐤 Flappy Bird - OG Edition</h1>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="scoreboard">Score: <span id="score">0</span> | Best: <span id="highScore">0</span></div>
+    <button id="restartBtn">Restart</button>
+  </div>
+
+  <div class="ads">
+    <h2>📢 Ads Space</h2>
+    <p style="text-align:center; color:#777;">(Ad placeholder)</p>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreDisplay = document.getElementById("score");
+const highScoreDisplay = document.getElementById("highScore");
+const restartBtn = document.getElementById("restartBtn");
+
+let bird, pipes, score, pipeGap, pipeSpeed, gameOver, frame;
+let highScore = localStorage.getItem("flappyHighScore") || 0;
+highScoreDisplay.textContent = highScore;
+
+// Game sounds
+const flapSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_1d16b16ab2.mp3?filename=flap-1.mp3");
+const hitSound = new Audio("https://cdn.pixabay.com/download/audio/2021/09/07/audio_74261e1d35.mp3?filename=hit-1.mp3");
+
+// Initialize game variables
+function initGame() {
+  bird = { x: 80, y: canvas.height/2, radius: 15, velocity: 0, alive:false };
+  pipes = [];
+  score = 0;
+  pipeGap = 150;
+  pipeSpeed = 2.5;
+  frame = 0;
+  gameOver = false;
+  scoreDisplay.textContent = 0;
+}
+initGame();
+
+// Draw bird
+function drawBird() {
+  const gradient = ctx.createRadialGradient(bird.x, bird.y, 5, bird.x, bird.y, 15);
+  gradient.addColorStop(0, "#00ffcc");
+  gradient.addColorStop(1, "#009966");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.closePath();
+}
+
+// Draw pipes
+function drawPipes() {
+  ctx.fillStyle = "#00ff88";
+  pipes.forEach(pipe => {
+    ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+    ctx.fillRect(pipe.x, pipe.top + pipeGap, pipe.width, canvas.height - pipe.top - pipeGap);
+  });
+}
+
+// Update pipes
+function updatePipes() {
+  if(frame % 100 === 0){
+    const top = Math.random() * (canvas.height/2) + 50;
+    pipes.push({ x: canvas.width, width: 50, top });
+  }
+  pipes.forEach(pipe => { pipe.x -= pipeSpeed; });
+  pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+
+  pipes.forEach(pipe => {
+    if(bird.x > pipe.x + pipe.width && !pipe.scored){
+      score++;
+      pipe.scored = true;
+      scoreDisplay.textContent = score;
+
+      if(score % 5 === 0 && pipeGap > 100) pipeGap -= 5;
+      if(score % 5 === 0 && pipeSpeed < 5) pipeSpeed += 0.2;
+    }
+  });
+}
+
+// Collision check
+function checkCollision() {
+  if(bird.y + bird.radius >= canvas.height || bird.y - bird.radius <= 0){
+    gameOver = true;
+    hitSound.play();
+  }
+  pipes.forEach(pipe => {
+    if(bird.x + bird.radius > pipe.x && bird.x - bird.radius < pipe.x + pipe.width &&
+      (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.top + pipeGap)){
+      gameOver = true;
+      hitSound.play();
+    }
+  });
+}
+
+// Update bird physics
+function updateBird() {
+  if(bird.alive){
+    bird.velocity += 0.4;
+    bird.y += bird.velocity;
+    if(bird.y < 0) bird.y = 0;
+  }
+}
+
+// Game loop
+function loop(){
+  frame++;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawBird();
+  if(bird.alive){
+    updateBird();
+    updatePipes();
+    drawPipes();
+    checkCollision();
+  } else {
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#00ff88";
+    ctx.font="22px Poppins";
+    ctx.fillText("Press Space to Start", 80, canvas.height/2);
+  }
+
+  if(gameOver){
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#00ff88";
+    ctx.font="24px Poppins";
+    ctx.fillText("Game Over!", 130, 250);
+    ctx.fillText(`Score: ${score}`, 160, 290);
+    ctx.fillText("Press Restart", 130, 330);
+    if(score > highScore){
+      highScore = score;
+      localStorage.setItem("flappyHighScore", highScore);
+    }
+    highScoreDisplay.textContent = highScore;
+    return;
+  }
+
+  requestAnimationFrame(loop);
+}
+loop();
+
+// Controls
+document.addEventListener("keydown", e => {
+  if(e.code === "Space"){
+    if(!bird.alive) bird.alive = true;
+    bird.velocity = -7;
+    flapSound.play();
+  }
+});
+
+// Restart button
+restartBtn.addEventListener("click", () => {
+  initGame();
+  loop();
+});
+
+// ===== Fun Facts Rotator =====
+const funFacts = [
+  "The first video game ever created was 'Tennis for Two' in 1958!",
+  "The Chrome Dino game was made so you can play offline — genius!",
+  "Mario was originally called 'Jumpman' in Donkey Kong (1981).",
+  "The term 'Easter Egg' in games means a hidden feature or secret.",
+  "Pac-Man was inspired by a pizza with a missing slice!",
+  "Gamers who play puzzle games improve problem-solving speed by 20%.",
+  "Flappy Bird was made by a solo dev in just 3 days!",
+  "The most expensive game ever made: GTA V — $265 million budget!",
+  "Speedrunners can finish Super Mario Bros in under 5 minutes!",
+  "Snake was first seen on Nokia phones in 1997!"
+];
+let currentFact = 0;
+function changeFact(){
+  document.getElementById("funFact").textContent = funFacts[currentFact];
+  currentFact = (currentFact + 1) % funFacts.length;
+}
+changeFact();
+setInterval(changeFact, 10000);
+</script>
+</body>
+</html>

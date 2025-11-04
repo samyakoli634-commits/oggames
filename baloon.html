@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎈 Hot Air Balloon | OG Games</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: linear-gradient(180deg, #87CEEB, #00BFFF);
+    font-family: "Poppins", sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  #gameCanvas {
+    border: 3px solid #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    background: linear-gradient(180deg, #87CEEB, #00BFFF);
+  }
+  #scoreboard {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 22px;
+    text-shadow: 0 0 5px #000;
+  }
+  #restart {
+    position: absolute;
+    bottom: 20px;
+    background: #ffcc00;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<div id="scoreboard">Score: 0</div>
+<button id="restart">Restart</button>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreDisplay = document.getElementById("scoreboard");
+const restartBtn = document.getElementById("restart");
+
+let balloon = { x: 100, y: 300, radius: 20, velocity: 0 };
+let gravity = 0.3;
+let lift = -6.5; // 🚀 increased lift for faster jump
+let pipes = [];
+let pipeSpeed = 2.2;
+let frame = 0;
+let score = 0;
+let gameOver = false;
+
+// 🎵 Sounds
+const flapSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_1d16b16ab2.mp3?filename=flap-1.mp3");
+const hitSound = new Audio("https://cdn.pixabay.com/download/audio/2021/09/07/audio_74261e1d35.mp3?filename=hit-1.mp3");
+
+function drawBalloon() {
+  const gradient = ctx.createRadialGradient(balloon.x, balloon.y, 5, balloon.x, balloon.y, 20);
+  gradient.addColorStop(0, "#ff6666");
+  gradient.addColorStop(1, "#cc0000");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(balloon.x, balloon.y, balloon.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 🎈 basket
+  ctx.fillStyle = "#663300";
+  ctx.fillRect(balloon.x - 10, balloon.y + 20, 20, 10);
+  ctx.beginPath();
+  ctx.moveTo(balloon.x - 10, balloon.y + 20);
+  ctx.lineTo(balloon.x - 5, balloon.y + 10);
+  ctx.moveTo(balloon.x + 10, balloon.y + 20);
+  ctx.lineTo(balloon.x + 5, balloon.y + 10);
+  ctx.strokeStyle = "#663300";
+  ctx.stroke();
+}
+
+function drawPipes() {
+  ctx.fillStyle = "#228B22";
+  pipes.forEach(pipe => {
+    ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+    ctx.fillRect(pipe.x, pipe.top + pipe.gap, pipe.width, canvas.height - pipe.top - pipe.gap);
+  });
+}
+
+function updatePipes() {
+  if (frame % 100 === 0) {
+    const top = Math.random() * (canvas.height / 2) + 40;
+    pipes.push({ x: canvas.width, width: 60, top, gap: 160 });
+  }
+  pipes.forEach(pipe => pipe.x -= pipeSpeed);
+  pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+
+  pipes.forEach(pipe => {
+    if (pipe.x + pipe.width === Math.floor(balloon.x)) {
+      score++;
+      scoreDisplay.textContent = `Score: ${score}`;
+    }
+  });
+}
+
+function checkCollision() {
+  if (balloon.y + balloon.radius >= canvas.height || balloon.y - balloon.radius <= 0) {
+    gameOver = true;
+    hitSound.play();
+  }
+  pipes.forEach(pipe => {
+    if (
+      balloon.x + balloon.radius > pipe.x &&
+      balloon.x - balloon.radius < pipe.x + pipe.width &&
+      (balloon.y - balloon.radius < pipe.top ||
+       balloon.y + balloon.radius > pipe.top + pipe.gap)
+    ) {
+      gameOver = true;
+      hitSound.play();
+    }
+  });
+}
+
+function updateBalloon() {
+  balloon.velocity += gravity;
+  balloon.y += balloon.velocity;
+  if (balloon.y < 0) balloon.y = 0;
+}
+
+function loop() {
+  if (gameOver) {
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#fff";
+    ctx.font = "24px Poppins";
+    ctx.fillText("Game Over!", 140, 260);
+    ctx.fillText(`Score: ${score}`, 160, 300);
+    restartBtn.style.display = "block";
+    return;
+  }
+
+  frame++;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBalloon();
+  updateBalloon();
+  updatePipes();
+  drawPipes();
+  checkCollision();
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" || e.code === "ArrowUp") {
+    balloon.velocity = lift;
+    flapSound.play();
+  }
+});
+canvas.addEventListener("click", () => {
+  balloon.velocity = lift;
+  flapSound.play();
+});
+
+restartBtn.addEventListener("click", () => {
+  balloon = { x: 100, y: 300, radius: 20, velocity: 0 };
+  pipes = [];
+  score = 0;
+  frame = 0;
+  gameOver = false;
+  scoreDisplay.textContent = "Score: 0";
+  restartBtn.style.display = "none";
+  loop();
+});
+
+loop();
+</script>
+</body>
+</html>

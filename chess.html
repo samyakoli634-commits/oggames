@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess | OG Games</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&family=Roboto&display=swap" rel="stylesheet">
+  <!-- Chessboard.js CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+  <style>
+    body {
+      background:#0a0f1f;
+      color:white;
+      font-family:'Roboto',sans-serif;
+      text-align:center;
+      margin:0;
+      padding:0;
+    }
+    h1 {
+      font-family:'Orbitron',sans-serif;
+      margin-top:10px;
+      letter-spacing:2px;
+    }
+    #board {
+      width: 420px;
+      margin:20px auto;
+      box-shadow:0 0 20px cyan;
+      border:2px solid cyan;
+    }
+    a.back {
+      color:cyan;
+      font-family:'Orbitron';
+      text-decoration:none;
+      font-size:18px;
+    }
+    a.back:hover {text-shadow:0 0 10px cyan;}
+    #status {
+      font-family:'Orbitron';
+      margin-top:10px;
+      font-size:18px;
+      color:cyan;
+    }
+    #message {
+      color:#ff8c00;
+      font-family:'Orbitron';
+      margin-top:8px;
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">⬅ Back to Games</a>
+  <h1>Chess</h1>
+
+  <div id="board"></div>
+  <div id="status"></div>
+  <div id="message"></div>
+
+  <!-- Chess engine & board scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+
+  <script>
+    // Robust initialization: wait for libraries to be available before using them.
+    let board = null;
+    let game = null;
+    const messageEl = document.getElementById('message');
+    const statusEl = document.getElementById('status');
+
+    function showMessage(text) {
+      messageEl.textContent = text;
+    }
+
+    function clearMessage() {
+      messageEl.textContent = '';
+    }
+
+    function updateStatus() {
+      if (!game) return;
+      let status = '';
+      if (game.in_checkmate()) status = 'Checkmate!';
+      else if (game.in_draw()) status = 'Draw!';
+      else status = game.turn() === 'w' ? 'Your Move' : 'AI Thinking...';
+      statusEl.innerText = status;
+    }
+
+    function onDragStart (source, piece) {
+      if (!game) return false;
+      if (game.game_over()) return false;
+      if (!piece) return false;
+      // only allow player (white) to move white pieces
+      if (piece.search(/^b/) !== -1) return false;
+    }
+
+    function onDrop (source, target) {
+      if (!game) return 'snapback';
+      const move = game.move({ from: source, to: target, promotion: 'q' });
+      if (!move) return 'snapback';
+      updateStatus();
+      // small delay to simulate AI thinking
+      window.setTimeout(aiMove, 200);
+    }
+
+    function onSnapEnd() {
+      // update board position after the piece snap for visual sync
+      if (board && game) board.position(game.fen());
+    }
+
+    function aiMove() {
+      if (!game) return;
+      const moves = game.moves();
+      if (moves.length === 0) return;
+      // simple random move AI
+      const moveSan = moves[Math.floor(Math.random() * moves.length)];
+      game.move(moveSan);
+      if (board) board.position(game.fen());
+      updateStatus();
+    }
+
+    // Attempt to initialize. If Chessboard or Chess is missing, poll for a short time
+    function tryInit(retriesLeft = 50, intervalMs = 100) {
+      // Check presence of required globals
+      if (typeof Chess === 'function' && typeof Chessboard !== 'undefined') {
+        try {
+          game = new Chess();
+        } catch (err) {
+          showMessage('Error creating chess engine: ' + err.message);
+          return;
+        }
+
+        // Initialize the visual board
+        try {
+          board = Chessboard('board', {
+            draggable: true,
+            position: 'start',
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd
+          });
+          clearMessage();
+          updateStatus();
+        } catch (err) {
+          showMessage('Error initializing board: ' + err.message);
+        }
+
+        return;
+      }
+
+      // Not ready yet
+      if (retriesLeft <= 0) {
+        showMessage('Failed to load chess libraries. Check your internet connection or CDN availability.');
+        return;
+      }
+
+      // show a transient loading message
+      showMessage('Loading chess libraries...');
+      setTimeout(() => tryInit(retriesLeft - 1, intervalMs), intervalMs);
+    }
+
+    // Run initialization once DOM is fully loaded
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      // small defer to allow scripts (if any) to finish
+      setTimeout(() => tryInit(), 50);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => setTimeout(() => tryInit(), 50));
+    }
+
+    // Expose helpers for debugging in console
+    window._ogChess = {
+      tryInit, getGame: () => game, getBoard: () => board
+    };
+  </script>
+</body>
+</html>
